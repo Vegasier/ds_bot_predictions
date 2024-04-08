@@ -1,66 +1,72 @@
-const { Client, GatewayIntentBits } = require("discord.js");
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
-const TOKEN = 'MTIyNjgyNDcyNTUwMjc1ODk2Mw.Gz-Y0e.QbkaS3Kdkx1WzQpXul4R2FCEOZw7ja3vDi9NEE';
-const fs = require('fs');
+const fs = require('node:fs');
+const path = require('node:path');
+const { Client, Collection, GatewayIntentBits } = require('discord.js');
+const { token } = require('./config.json');
 
-// Объект для хранения времени последнего использования бота для каждого пользователя
-const lastUsed = {};
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-// Функция для генерации фиктивного предсказания
-function generatePrediction() {
-    const predictions = [
-        "Сегодня будет отличный день!",
-        "Остерегайтесь неожиданных сюрпризов...",
-        "Сегодня подойдет время для важного решения.",
-        "Будьте готовы к неожиданным встречам.",
-        "Лучше не принимать важные решения сегодня.",
-        "Настройтесь на успех!",
-        "Не забывайте про здоровье."
-    ];
-    // Выбираем случайное предсказание из массива
-    const randomIndex = Math.floor(Math.random() * predictions.length);
-    return predictions[randomIndex];
-}
-client.on('ready', () => {
-    console.log(`Logged in as ${client.user.tag}!`);
-});
-client.on('message', msg => {
-    if (msg.content === '!me') {
-        // Проверяем, использовал ли пользователь бота в последние 12 часов
-        if (lastUsed[msg.author.id] && Date.now() - lastUsed[msg.author.id] < 12 * 60 * 60 * 1000) {
-            msg.reply('Предсказание действует 12 часов. Не торопи события.');
-        } else {
-            // Генерируем предсказание
-            const prediction = generatePrediction();
-        // Отправляем предсказание автору сообщения
-        msg.author.send(prediction)
-            .then(() => console.log(`Sent prediction to ${msg.author.username}`))
-            .catch(error => console.error('Could not send prediction:', error));
-        }
-    }
-});
-client.login(TOKEN);
+client.cooldowns = new Collection();
+client.commands = new Collection();
+const foldersPath = path.join(__dirname, 'commands');
+const commandFolders = fs.readdirSync(foldersPath);
 
-function disconnectBot() {
-    console.log('Disconnecting bot...');
-    client.destroy()
-        .then(() => {
-            console.log('Bot disconnected successfully');
-            process.exit(0); // Завершаем процесс с кодом успешного завершения
-        })
-        .catch(error => {
-            console.error('Error while disconnecting bot:', error);
-            process.exit(1); // Завершаем процесс с кодом ошибки
-        });
+for (const folder of commandFolders) {
+	const commandsPath = path.join(foldersPath, folder);
+	const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+	for (const file of commandFiles) {
+		const filePath = path.join(commandsPath, file);
+		const command = require(filePath);
+		if ('data' in command && 'execute' in command) {
+			client.commands.set(command.data.name, command);
+		} else {
+			console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+		}
+	}
 }
 
-// Добавляем обработчик для команды "!disconnect"
-client.on('message', msg => {
-    if (msg.content === '!disconnect') {
-        if (msg.author.id === '236837547001643008') {
-            disconnectBot();
-        } else {
-            msg.reply('Вы не имеете права отключить бота.'); // Ответ на запрос отключения от неавторизованного пользователя
-        }
-    }
-});
+const eventsPath = path.join(__dirname, 'events');
+const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+
+for (const file of eventFiles) {
+	const filePath = path.join(eventsPath, file);
+	const event = require(filePath);
+	if (event.once) {
+		client.once(event.name, (...args) => event.execute(...args));
+	} else {
+		client.on(event.name, (...args) => event.execute(...args));
+	}
+}
+
+// client.on('ready', () => {
+//     console.log(`Logged in as ${client.user.tag}!`);
+//   });
+  
+//   client.on('message', async message => {
+//     if (message.author.bot) return; // Ignore messages from bots
+//     if (!message.content.startsWith('/prediction')) return; // Check if message starts with '/prediction'
+  
+//     // You can put your prediction generation logic here
+//     const prediction = generatePrediction();
+  
+//     // Send the prediction to the user
+//     try {
+//       await message.author.send(`Your prediction: ${prediction}`);
+//       await message.channel.send('Prediction sent to your DM!');
+//     } catch (error) {
+//       console.error(`Could not send prediction to ${message.author.tag}:`, error);
+//       message.channel.send('Failed to send prediction. Please make sure your DMs are open.');
+//     }
+//   });
+  
+//   // Function to generate a random prediction (replace this with your actual prediction logic)
+//   function generatePrediction() {
+//     const predictions = [
+//       "Tomorrow will be a sunny day.",
+//       "You will meet someone new today.",
+//       "You'll receive good news soon.",
+//       "Be cautious, as something unexpected might happen."
+//     ];
+//     return predictions[Math.floor(Math.random() * predictions.length)];
+//   }
+
+client.login(token);
