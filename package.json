@@ -1,5 +1,14 @@
 {
   "dependencies": {
-    "discord.js": "^14.14.1"
-  }
+    "discord.js": "^14.12.1"
+  },
+  "name": "ds_bot_predictions",
+  "description": "Первая попытка написать бота для Дискорд сервера.",
+  "version": "1.0.0",
+  "main": "bot_predictions.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
 }

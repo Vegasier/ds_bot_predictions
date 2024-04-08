@@ -1,5 +1,5 @@
-const Discord = require('discord.js');
-const client = new Discord.Client();
+const { Client, GatewayIntentBits } = require("discord.js");
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 const TOKEN = 'MTIyNjgyNDcyNTUwMjc1ODk2Mw.Gz-Y0e.QbkaS3Kdkx1WzQpXul4R2FCEOZw7ja3vDi9NEE';
 const fs = require('fs');
 
@@ -40,3 +40,27 @@ client.on('message', msg => {
     }
 });
 client.login(TOKEN);
+
+function disconnectBot() {
+    console.log('Disconnecting bot...');
+    client.destroy()
+        .then(() => {
+            console.log('Bot disconnected successfully');
+            process.exit(0); // Завершаем процесс с кодом успешного завершения
+        })
+        .catch(error => {
+            console.error('Error while disconnecting bot:', error);
+            process.exit(1); // Завершаем процесс с кодом ошибки
+        });
+}
+
+// Добавляем обработчик для команды "!disconnect"
+client.on('message', msg => {
+    if (msg.content === '!disconnect') {
+        if (msg.author.id === '236837547001643008') {
+            disconnectBot();
+        } else {
+            msg.reply('Вы не имеете права отключить бота.'); // Ответ на запрос отключения от неавторизованного пользователя
+        }
+    }
+});
